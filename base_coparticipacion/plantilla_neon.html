@@ -320,7 +320,7 @@ b.textContent='Error en la página: '+(e.message||'desconocido')+(e.lineno?' (l�
       <p>Lo que Nación transfirió a cada provincia, en millones de pesos, comparado con el año anterior y ajustado por inflación.</p>
     </div>
     <div class="top-btns"><button type="button" class="btn" id="btn-ayuda">¿Cómo funciona?</button>
-    <button type="button" class="btn" id="btn-exportar">Exportar a HTML</button></div>
+</div>
   </header>
 
   <section class="elegir" id="elegir-vista" aria-label="Elegir vista">
@@ -1245,21 +1245,6 @@ function resumenFiltros(){
     mods
   };
 }
-function exportar(){
-  const clon=document.documentElement.cloneNode(true);
-  const info=resumenFiltros(), ahora=new Date();
-  const bvc=clon.querySelector('#bienvenida'); if(bvc) bvc.remove();
-  const bay=clon.querySelector('#btn-ayuda'); if(bay) bay.remove();
-  const bu=clon.querySelector('#barra-usuario'); if(bu) bu.remove();
-  clon.querySelector('body').style.overflow='';
-  const b=clon.querySelector('#banner-export'); b.removeAttribute('hidden');
-  b.innerHTML='<strong>Versión exportada el '+pad(ahora.getDate())+'/'+pad(ahora.getMonth()+1)+'/'+ahora.getFullYear()+'.</strong> Filtros aplicados al exportar: '+esc(info.texto)+'.';
-  clon.querySelector('#estado-inicial').textContent=JSON.stringify({prov:S.prov,vista:S.vista,fecha:toISO(S.fecha),color:S.color,ipcMod,aj:S.aj});
-  const html='<!DOCTYPE html>\n'+clon.outerHTML;
-  const blob=new Blob([html],{type:'text/html;charset=utf-8'}), url=URL.createObjectURL(blob), a=document.createElement('a');
-  a.href=url; a.download='coparticipacion_'+sinTildes(S.prov?visible(S.prov):'todas').replace(/[^a-z0-9]+/g,'-')+'_'+toISO(S.fecha)+'.html';
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-}
 
 /* ===================== arranque ===================== */
 construirMapa();
@@ -1278,7 +1263,6 @@ $('#buscar').addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{ if(!e.target.closest('.buscador')) $('#ranking').hidden=true; });
 $('#elegir-vista').addEventListener('click',e=>{ const b=e.target.closest('button[data-v]'); if(b){ S.vista=b.dataset.v; render(); window.scrollTo({top:0,behavior:'smooth'}); } });
 $('#ranking').addEventListener('click',e=>{ const b=e.target.closest('button[data-p]'); if(b) elegir(b.dataset.p); });
-$('#btn-exportar').addEventListener('click',exportar);
 $('#btn-img-cuadro').addEventListener('click',imgCuadro);
 $('#btn-cuadro').addEventListener('click',()=>{
   const cu=$('#cuadro-cuerpo'), b=$('#btn-cuadro'), abrir=cu.hidden;
@@ -1319,7 +1303,7 @@ $('#t-nac').addEventListener('click',e=>{
 let eraMovil=esMovil();
 window.addEventListener('resize',()=>{ if(esMovil()!==eraMovil){ eraMovil=esMovil(); render({sinIPC:true}); } });
 render();
-window.__app = {S, calcular, ipcDe, render, setIPC:(k,v)=>{ipcMod[k]=v;}, resumenFiltros, exportar};  // útil para pruebas
+window.__app = {S, calcular, ipcDe, render, setIPC:(k,v)=>{ipcMod[k]=v;}, resumenFiltros};  // útil para pruebas
 })();
 </script>
 </body>
