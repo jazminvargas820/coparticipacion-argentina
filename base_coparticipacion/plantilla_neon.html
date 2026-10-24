@@ -225,19 +225,19 @@ body::before{content:"";display:block;height:6px;background:linear-gradient(90de
 /* ===================== TEMA NEÓN (azul noche → magenta) ===================== */
 :root:root{
   color-scheme:dark;
-  --tinta:#eef0ff; --papel:#090a1d; --panel:#13122e; --celeste:#4d7cff; --celeste-osc:#ff3d9a;
+  --tinta:#eef0ff; --papel:#090a1d; --panel:#13122e; --celeste:#4d7cff; --celeste-osc:#8a4dff;
   --niebla:#2c2c63; --suave:#a2a8d6; --gano:#2ee6a6; --perdio:#ff5470; --neutro:#1d1b45;
   --serie-actual:#ff4fa3; --serie-anterior:#4d7cff; --foco:#ffd166; --mapa-base:#2b2f7a;
   --vidrio:linear-gradient(160deg,rgba(44,38,120,.55),rgba(88,24,92,.42));
   --borde-neon:rgba(124,134,255,.30);
 }
-body{background:radial-gradient(900px 520px at 100% -5%,rgba(255,61,154,.22),transparent 60%),radial-gradient(900px 560px at -5% 8%,rgba(77,124,255,.22),transparent 60%),#090a1d;background-attachment:fixed}
-body::before{background:linear-gradient(90deg,#2f6bff,#8a4dff,#ff3d9a);box-shadow:0 0 22px rgba(255,61,154,.55)}
-.top h1{background:linear-gradient(90deg,#8fb0ff,#ff7ac0);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+body{background:radial-gradient(900px 520px at 100% -5%,rgba(138,77,255,.18),transparent 60%),radial-gradient(900px 560px at -5% 8%,rgba(77,124,255,.22),transparent 60%),#090a1d;background-attachment:fixed}
+body::before{background:#8a4dff;box-shadow:0 0 22px rgba(138,77,255,.6)}
+.top h1{color:#b79bff;text-shadow:0 0 24px rgba(138,77,255,.45)}
 .controles{border-color:var(--borde-neon)}
 
 /* paneles de vidrio */
-.principal>section,#cuadro-cuerpo{background:var(--vidrio);border:1px solid var(--borde-neon);border-radius:18px;padding:20px;box-shadow:0 0 0 1px rgba(255,61,154,.06),0 18px 50px rgba(0,0,0,.45)}
+.principal>section,#cuadro-cuerpo{background:var(--vidrio);border:1px solid var(--borde-neon);border-radius:18px;padding:20px;box-shadow:0 0 0 1px rgba(138,77,255,.06),0 18px 50px rgba(0,0,0,.45)}
 @media (max-width:600px){.principal>section,#cuadro-cuerpo{padding:14px;border-radius:14px}}
 
 /* botones */
@@ -245,50 +245,50 @@ body::before{background:linear-gradient(90deg,#2f6bff,#8a4dff,#ff3d9a);box-shado
 .btn:hover{background:rgba(124,134,255,.2);color:#fff}
 .btn.suave{border-color:var(--borde-neon)}
 .btn.suave:hover{background:rgba(124,134,255,.22);color:#fff}
-.btn#btn-exportar{background:linear-gradient(90deg,#3b6bff,#ff3d9a);border:0;color:#fff;box-shadow:0 0 18px rgba(255,61,154,.35)}
-.btn#btn-exportar:hover{background:linear-gradient(90deg,#3b6bff,#ff3d9a);filter:brightness(1.12);color:#fff}
+.btn#btn-exportar{background:#8a4dff;border:0;color:#fff;box-shadow:0 0 18px rgba(138,77,255,.45)}
+.btn#btn-exportar:hover{background:#8a4dff;filter:brightness(1.12);color:#fff}
 .seg{background:rgba(255,255,255,.03);border-color:rgba(124,134,255,.4)}
 .seg button + button{border-left-color:rgba(124,134,255,.4)}
-.seg button[aria-pressed="true"]{background:linear-gradient(90deg,#3b6bff,#c13fd1);color:#fff;box-shadow:0 0 14px rgba(120,90,255,.55)}
+.seg button[aria-pressed="true"]{background:#8a4dff;color:#fff;box-shadow:0 0 14px rgba(138,77,255,.6)}
 input[type=date],.buscador input,.ipc-mes input{background:rgba(255,255,255,.04);border-color:rgba(124,134,255,.4);color:var(--tinta)}
-.buscador input:focus{border-color:#ff3d9a;box-shadow:0 0 14px rgba(255,61,154,.3)}
+.buscador input:focus{border-color:#8a4dff;box-shadow:0 0 14px rgba(138,77,255,.3)}
 #ranking{background:#15133a;border-color:rgba(124,134,255,.45)}
-.btn-ver{border-color:#ff3d9a;color:#ff7ac0;box-shadow:0 0 16px rgba(255,61,154,.18)}
-.btn-ver:hover{background:linear-gradient(90deg,#3b6bff,#ff3d9a);color:#fff;border-color:transparent}
+.btn-ver{border-color:#8a4dff;color:#b79bff;box-shadow:0 0 16px rgba(138,77,255,.18)}
+.btn-ver:hover{background:#8a4dff;color:#fff;border-color:transparent}
 
 /* tarjetas de elegir vista */
 .card-vista{background:var(--vidrio);border:1px solid rgba(124,134,255,.45);box-shadow:0 0 24px rgba(77,124,255,.16)}
-.card-vista b{color:#ff7ac0}
-.card-vista:hover{background:linear-gradient(160deg,#3b6bff,#c13fd1);border-color:#ff7ac0;box-shadow:0 0 30px rgba(255,61,154,.4)}
+.card-vista b{color:#b79bff}
+.card-vista:hover{background:#8a4dff;border-color:#b79bff;box-shadow:0 0 30px rgba(138,77,255,.45)}
 .card-vista:hover b,.card-vista:hover span{color:#fff}
 .vacio{border-color:rgba(124,134,255,.35)}
 
 /* mapa */
 #mapa path{stroke:#090a1d}
 #mapa path:hover{stroke:#fff}
-#mapa path.sel{stroke:#fff;filter:drop-shadow(0 0 7px rgba(255,61,154,.9))}
+#mapa path.sel{stroke:#fff;filter:drop-shadow(0 0 7px rgba(138,77,255,.9))}
 #tip{background:#1b1850;color:#fff;border:1px solid rgba(124,134,255,.55);box-shadow:0 0 16px rgba(77,124,255,.3)}
 
 /* datos */
 .grande .cifra.pos{text-shadow:0 0 30px rgba(46,230,166,.45)}
 .grande .cifra.neg{text-shadow:0 0 30px rgba(255,84,112,.5)}
-.ficha-tabla thead tr,#t-nac thead tr{background:linear-gradient(90deg,#2a3aa8,#8a2f9f)}
+.ficha-tabla thead tr,#t-nac thead tr{background:#3d2a8f}
 .ficha-tabla thead th,#t-nac thead th{background:transparent;color:#fff}
 #t-nac tfoot td{background:rgba(124,134,255,.14)}
 .etq{background:#ffb454;color:#1a1030}
-.bloque h3{border-left-color:#ff3d9a}
+.bloque h3{border-left-color:#8a4dff}
 .chart svg rect[style]{filter:drop-shadow(0 0 5px rgba(120,140,255,.35))}
 .ipc-mes{background:rgba(255,255,255,.03)}
-.ipc-mes.usado{border-color:#ff3d9a;box-shadow:0 0 14px rgba(255,61,154,.3)}
+.ipc-mes.usado{border-color:#8a4dff;box-shadow:0 0 14px rgba(138,77,255,.3)}
 .ipc-in button{background:rgba(255,255,255,.05);color:var(--tinta)}
 
 /* cartel de bienvenida */
 #bienvenida{background:rgba(5,5,18,.78)}
-.bv-card{background:linear-gradient(160deg,#1a1650,#2b1050);border:1px solid rgba(124,134,255,.45);border-top:6px solid #ff3d9a;box-shadow:0 0 60px rgba(255,61,154,.28),0 24px 70px rgba(0,0,0,.6)}
-.bv-ey,.bv-card h2 em{color:#ff7ac0}
-.bv-card li i{background:linear-gradient(135deg,#3b6bff,#ff3d9a)}
-.bv-go{background:linear-gradient(90deg,#3b6bff,#ff3d9a);box-shadow:0 0 22px rgba(255,61,154,.4)}
-.bv-go:hover{background:linear-gradient(90deg,#3b6bff,#ff3d9a);color:#fff;filter:brightness(1.12)}
+.bv-card{background:linear-gradient(160deg,#1a1650,#2b1050);border:1px solid rgba(124,134,255,.45);border-top:6px solid #8a4dff;box-shadow:0 0 60px rgba(138,77,255,.28),0 24px 70px rgba(0,0,0,.6)}
+.bv-ey,.bv-card h2 em{color:#b79bff}
+.bv-card li i{background:#8a4dff}
+.bv-go{background:#8a4dff;box-shadow:0 0 22px rgba(138,77,255,.45)}
+.bv-go:hover{background:#8a4dff;color:#fff;filter:brightness(1.12)}
 </style>
 </head>
 <body>
@@ -724,7 +724,7 @@ function colorDe(v){
   const neu = rgb(cs.getPropertyValue('--neutro')), pos = rgb(cs.getPropertyValue('--gano')), neg = rgb(cs.getPropertyValue('--perdio'));
   if(v==null||isNaN(v)) return 'rgb('+neu.join(',')+')';
   const t = Math.min(1,Math.abs(v)/escala.max);
-  return 'rgb('+mezcla(neu, v<0?neg:pos, 0.12+0.88*t).join(',')+')';
+  return 'rgb('+mezcla(neu, v<0?neg:pos, 0.35+0.65*t).join(',')+')';
 }
 function pintarMapa(){
   if(!S.vista){
@@ -733,8 +733,12 @@ function pintarMapa(){
     $('#leyenda').innerHTML=''; return;
   }
   const vals = PROVS.map(p=>resumen[p][S.color]).filter(v=>v!=null);
-  const mx = vals.length ? Math.max(...vals.map(Math.abs)) : 10;
-  escala.max = Math.max(5, Math.ceil(mx/5)*5);
+  /* La escala se ajusta a la mayoría de las provincias (percentil 80), no al valor más extremo:
+     así en el acumulado anual, donde las variaciones son chicas, los colores se siguen viendo. */
+  const abs = vals.map(Math.abs).sort((a,b)=>a-b);
+  const p80 = abs.length ? abs[Math.min(abs.length-1, Math.floor(abs.length*0.8))] : 10;
+  const pasos = [1,2,3,5,10,15,20,30,50,100];
+  escala.max = pasos.find(x=>x>=p80) || Math.ceil(p80/50)*50;
   Object.keys(paths).forEach(n=>{
     paths[n].style.fill = colorDe(resumen[n] ? resumen[n][S.color] : null);
     paths[n].classList.toggle('sel', n===S.prov);
