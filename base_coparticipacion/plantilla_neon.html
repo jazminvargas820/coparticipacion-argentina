@@ -802,6 +802,8 @@ function graficoVariacion(cont,{cats,vals,etiq}){
 }
 
 /* ===================== ficha de la provincia ===================== */
+const etiqCopa = C => { const f=ymd(C); return S.vista==='mensual' ? 'Copa '+MESES[f.m-1]+' '+f.y : 'Copa al '+fmtFecha(C); };
+const periodoCorto = () => { const f=ymd(S.fecha); return S.vista==='mensual' ? MESES[f.m-1]+' de '+f.y : 'hasta el '+fmtFecha(S.fecha); };
 const NOMBRE_VISTA = {diario:'Día a día del mes', mensual:'Mes completo · dato consolidado', anual:'Acumulado del año'};
 let ultimoR = null;
 function avisosDe(r){
@@ -814,7 +816,7 @@ function pintarFicha(r,conservarIPC){
   const fa = ymd(r.fechaAnt);
   const sufijo = S.vista==='anual' ? ' (desde el 1/1)' : '';
   ultimoR = r;
-  let html = '<h2>'+bandera(S.prov)+esc(visible(S.prov))+'</h2><p class="sub">'+NOMBRE_VISTA[S.vista]+' · hasta el '+fmtFecha(S.fecha)+'</p>'+
+  let html = '<h2>'+bandera(S.prov)+esc(visible(S.prov))+'</h2><p class="sub">'+NOMBRE_VISTA[S.vista]+' · '+periodoCorto()+'</p>'+
     '<div class="acciones"><button type="button" class="btn suave" id="btn-img-ficha">Descargar imagen</button><button type="button" class="btn suave" id="btn-todas">← Ver todas las provincias</button></div>';
 
   if(r.hayComp){
@@ -829,7 +831,7 @@ function pintarFicha(r,conservarIPC){
 
   const ipcCelda = S.vista==='anual' ? 'Mes a mes (ver tabla)' : (r.ipcs[0].v==null?'–':fmt(r.ipcs[0].v)+'%'+(r.ipcs[0].mod?'<span class="etq">simulado</span>':(r.ipcs[0].estimado?'<span class="etq">estimado</span>':'')));
   html += '<div class="tabla-scroll"><table class="ficha-tabla"><thead><tr><th>Concepto</th>'+
-    '<th>Copa al '+fmtFecha(r.fechaAnt)+' (mm $)</th><th>Copa al '+fmtFecha(S.fecha)+' (mm $)</th><th>IPC interanual</th><th>Copa '+fa.y+' actualizada (mm $)</th><th>Variación nominal</th><th>Variación real</th></tr></thead><tbody><tr>'+
+    '<th>'+etiqCopa(r.fechaAnt)+' (mm $)</th><th>'+etiqCopa(S.fecha)+' (mm $)</th><th>IPC interanual</th><th>Copa '+fa.y+' actualizada (mm $)</th><th>Variación nominal</th><th>Variación real</th></tr></thead><tbody><tr>'+
     '<td>'+(S.vista==='anual'?'Recursos nacionales · año':'Recursos nacionales · '+MESES[f.m-1])+sufijo+'</td>'+
     '<td class="num">'+fmt(r.anterior)+'</td><td class="num">'+fmt(r.actual)+'</td><td class="num">'+ipcCelda+'</td>'+
     '<td class="num">'+fmt(r.hayComp?r.actualizada:null)+'</td><td class="num '+clase(r.nominal)+'">'+fmtPct(r.hayComp?r.nominal:null)+'</td><td class="num '+clase(r.real)+'">'+fmtPct(r.hayComp?r.real:null)+'</td></tr></tbody></table></div>';
@@ -1074,7 +1076,7 @@ function dibujarFicha(g,Wd,r){
   const gr=g.createLinearGradient(0,0,Wd,0); gr.addColorStop(0,'#4b1d9a'); gr.addColorStop(.5,'#6d2fd6'); gr.addColorStop(1,'#a77bff');
   g.fillStyle=gr; g.fillRect(0,0,Wd,10);
   g.textAlign='left'; const fw=dibujarBandera(g,S.prov,X,54,34); g.fillStyle=PC.tinta; g.font='700 40px '+serif; g.fillText(visible(S.prov),X+(fw?fw+16:0),68);
-  g.fillStyle=PC.suave; g.font='400 18px '+sans; g.fillText(NOMBRE_VISTA[S.vista]+' · hasta el '+fmtFecha(S.fecha),X,98);
+  g.fillStyle=PC.suave; g.font='400 18px '+sans; g.fillText(NOMBRE_VISTA[S.vista]+' · '+periodoCorto(),X,98);
   let y=118;
   if(r.hayComp){
     const esReal=S.color==='real', v=esReal?r.real:r.nominal;
@@ -1085,9 +1087,9 @@ function dibujarFicha(g,Wd,r){
   }
   const ipcT = S.vista==='anual' ? 'Mes a mes' : (r.ipcs[0].v==null?'–':fmt(r.ipcs[0].v)+'%'+(r.ipcs[0].mod?' (simulado)':(r.ipcs[0].estimado?' (estimado)':'')));
   const cols=[{f:.22,al:'l'},{f:.14,al:'r'},{f:.14,al:'r'},{f:.15,al:'r'},{f:.15,al:'r'},{f:.10,al:'r'},{f:.10,al:'r'}];
-  y=tablaPNG(g,X,y,w,cols,['Concepto','Copa al '+fmtFecha(r.fechaAnt)+' (mm\u00a0$)','Copa al '+fmtFecha(S.fecha)+' (mm\u00a0$)','IPC interanual','Copa '+fa.y+' actualizada (mm\u00a0$)','Variación nominal','Variación real'],
+  y=tablaPNG(g,X,y,w,cols,['Concepto',etiqCopa(r.fechaAnt)+' (mm\u00a0$)',etiqCopa(S.fecha)+' (mm\u00a0$)','IPC interanual','Copa '+fa.y+' actualizada (mm\u00a0$)','Variación nominal','Variación real'],
     [{celdas:[{t:S.vista==='anual'?'Recursos nacionales · año':'Recursos nacionales · '+MESES[f.m-1],b:1},{t:fmt(r.anterior),b:1},{t:fmt(r.actual),b:1},{t:ipcT,b:1},{t:fmt(r.hayComp?r.actualizada:null),b:1},{t:fmtPct(r.hayComp?r.nominal:null),b:1,c:colorN(r.hayComp?r.nominal:null)},{t:fmtPct(r.hayComp?r.real:null),b:1,c:colorN(r.hayComp?r.real:null)}]}],{rh:46,fs:16});
-  if(S.vista!=='diario' && r.meses.length){
+  if(S.vista==='anual' && r.meses.length){
     y+=30; g.textAlign='left'; g.fillStyle=PC.tinta; g.font='700 20px '+sans; g.fillText('Mes a mes',X,y); y+=12;
     const mc=[{f:.16,al:'l'},{f:.14,al:'r'},{f:.14,al:'r'},{f:.14,al:'r'},{f:.16,al:'r'},{f:.13,al:'r'},{f:.13,al:'r'}];
     y=tablaPNG(g,X,y,w,mc,['Mes',(f.y-1)+' (mm\u00a0$)',f.y+' (mm\u00a0$)','IPC interanual',(f.y-1)+' actualizado (mm\u00a0$)','Var. nominal','Var. real'],
