@@ -594,6 +594,40 @@ function avisoConsolidado(){
   }
   return h+'</div>';
 }
+/* Detalle día por día del mes (montos exactos, sin consolidar) */
+function datosDias(){
+  const f=ymd(S.fecha), arr=SERIE[S.prov]||[], val=i=>(i>=0&&i<arr.length)?arr[i]:null, filas=[];
+  let tc=0, tp=0;
+  for(let d=1; d<=f.d; d++){
+    const t=mk(f.y,f.m,d), c=val(idx(t)), p=val(idx(shiftYear(t,-1)));
+    if(!c && !p) continue;
+    filas.push({d, c:c||null, p:p||null}); tc+=c||0; tp+=p||0;
+  }
+  return {f, filas, tc, tp};
+}
+const NOTA_DIAS = m => 'Montos exactos transferidos cada día, sin consolidar. El total final de '+m+' puede coincidir o diferir del dato consolidado (el total oficial del mes); para verlo, usá la vista Mensual.';
+function htmlDias(){
+  const D=datosDias(), A=D.f.y, B=A-1;
+  return '<div class="aviso info">'+NOTA_DIAS(MESES[D.f.m-1])+'</div>'+
+    '<div class="tabla-scroll"><table class="ficha-tabla"><thead><tr><th>Día</th><th>'+mayus(MESES[D.f.m-1])+' '+B+' (mm $)</th><th>'+mayus(MESES[D.f.m-1])+' '+A+' (mm $)</th></tr></thead><tbody>'+
+    D.filas.map(x=>'<tr><td>'+x.d+'</td><td class="num">'+fmt(x.p)+'</td><td class="num">'+fmt(x.c)+'</td></tr>').join('')+
+    '<tr><td><b>Total (sin consolidar)</b></td><td class="num"><b>'+fmt(D.tp)+'</b></td><td class="num"><b>'+fmt(D.tc)+'</b></td></tr></tbody></table></div>'+
+    '<div class="acciones"><button type="button" class="btn suave" id="btn-img-dias">Descargar imagen</button></div>';
+}
+function dibujarDias(g,Wd){
+  const sans=fSans(), X=40, w=Wd-80, D=datosDias(), A=D.f.y, B=A-1, mes=MESES[D.f.m-1];
+  let y=cabeceraImagen(g,Wd,'Monto de cada día · '+mes+' de '+A+' · sin consolidar');
+  g.fillStyle=PC.tinta; g.font='700 22px '+sans; g.textAlign='left'; g.fillText('¿Cuánto se mandó cada día?',X,y+18); y+=34;
+  const cols=[{f:.30,al:'l'},{f:.35,al:'r'},{f:.35,al:'r'}];
+  const filas=D.filas.map(x=>({celdas:[{t:String(x.d)},{t:fmt(x.p)},{t:fmt(x.c)}]}));
+  filas.push({celdas:[{t:'Total (sin consolidar)',b:1},{t:fmt(D.tp),b:1},{t:fmt(D.tc),b:1}]});
+  y=tablaPNG(g,X,y,w,cols,['Día',mayus(mes)+' '+B+' (mm\u00a0$)',mayus(mes)+' '+A+' (mm\u00a0$)'],filas,{rh:30,fs:15});
+  y+=20; g.textAlign='left'; g.font='400 14px '+sans; g.fillStyle=PC.suave;
+  envolver(g,NOTA_DIAS(mes),w).forEach(l=>{ g.fillText(l,X,y); y+=19; });
+  y+=18; return pieImagen(g,X,y,w);
+}
+function imgDias(){ if(S.prov) generarPNG((g,Wd)=>dibujarDias(g,Wd),900,'montos_diarios_'+slug(visible(S.prov))+'_'+toISO(S.fecha)+'.png'); }
+
 /* ¿La fecha es el último día del mes con transferencias (o el último del calendario)? */
 function esCierreMes(C){
   const f=ymd(C), fin=diasMes(f.y,f.m);
@@ -858,7 +892,7 @@ function pintarFicha(r,conservarIPC){
 
   const desp=(id,tit,cuerpo)=>'<div class="bloque"><button type="button" class="btn-ver chico" data-desp="'+id+'" aria-expanded="'+(S.abiertos[id]?'true':'false')+'"><span>'+tit+'</span><span class="btn-ver-flecha" aria-hidden="true">▾</span></button><div class="desp-cuerpo"'+(S.abiertos[id]?'':' hidden')+'>'+cuerpo+'</div></div>';
   if(S.vista==='diario'){
-    html += desp('dias','Ver monto de cada día','<h3 id="t-g2"></h3><p class="nota" id="n-g2"></p><div class="chart" id="g2"></div>');
+    if(esCierreMes(S.fecha)) html += desp('dias','¿Querés ver cuánto se mandó cada día?', htmlDias());
   } else if(S.vista==='anual'){
     html += desp('acum','Ver gráfico acumulado del año','<p class="nota" id="n-g1"></p><div class="chart" id="g1"></div>');
     const g = desp('varmes-g','Ver gráfico','<p class="nota" id="n-g2"></p><div class="chart" id="g2"></div><div class="acciones"><button type="button" class="btn suave" id="btn-img-var">Descargar gráfico</button></div>');
@@ -900,13 +934,7 @@ function pintarGraficos(r){
       etiq:i=>MESES[ms[i].m-1]+' · variación real '+fmtPct(rl[i])+' · nominal '+fmtPct(varPct(ms[i].cur,ms[i].prev))});
   };
   if(S.vista==='diario'){
-    const dias=[], cur=[], prev=[];
-    for(let d=1; d<=f.d; d++){
-      cur.push(val(idx(mk(A,f.m,d)))); prev.push(val(idx(shiftYear(mk(A,f.m,d),-1)))); dias.push(String(d));
-    }
-    tg(2,'Monto de cada día','Millones de pesos que ingresaron cada día, a valores corrientes.');
-    graficoBarras($('#g2'),{cats:dias,series:[{name:String(B),color:cAnt,vals:prev},{name:String(A),color:cAct,vals:cur}],
-      etiq:(i,v)=>'Día '+dias[i]+' · '+B+': '+fmt(v[0])+' · '+A+': '+fmt(v[1])});
+    /* el detalle día por día es una tabla (htmlDias), sin gráfico */
   } else if(S.vista==='mensual'){
     /* sin gráficos en la vista mensual */
   } else {
@@ -1259,6 +1287,7 @@ $('#ficha').addEventListener('click',e=>{ const b=e.target.closest('button'); if
   else if(b.id==='btn-todas'){ S.prov=null; render(); }
   else if(b.id==='btn-ver-cons'){ const f=ymd(S.fecha); S.vista='mensual'; S._f=mk(f.y,f.m,diasMes(f.y,f.m)); render(); }
   else if(b.id==='btn-img-var') imgVar();
+  else if(b.id==='btn-img-dias') imgDias();
   else if(b.id==='btn-img-tabla') imgTablaMeses();
   else if(b.dataset.desp){
     const id=b.dataset.desp; S.abiertos[id]=!S.abiertos[id];
