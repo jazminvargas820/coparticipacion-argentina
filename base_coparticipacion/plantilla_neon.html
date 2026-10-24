@@ -102,6 +102,8 @@ html,body{overflow-x:hidden}
 .grande .cifra{font-family:var(--serif);font-weight:700;font-size:clamp(54px,9vw,96px);line-height:1;letter-spacing:-.02em}
 .grande .explica{color:var(--suave);max-width:34ch}
 .aviso{background:var(--neutro);border-left:4px solid var(--foco);padding:9px 12px;border-radius:0 8px 8px 0;margin:10px 0;font-size:14px}
+.aviso.info{border-left-color:var(--celeste)}
+#mes-sel{font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--niebla);background:var(--panel);color:var(--tinta);min-width:200px}
 .tabla-scroll{overflow-x:auto;margin:14px 0 4px}
 table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--niebla);white-space:nowrap}
@@ -339,10 +341,15 @@ b.textContent='Error en la página: '+(e.message||'desconocido')+(e.lineno?' (l�
         <button type="button" data-v="anual">Anual</button>
       </div>
     </div>
-    <div class="ctl"><span>Hasta la fecha</span>
+    <div class="ctl" id="ctl-fecha"><span>Hasta la fecha</span>
       <div class="fecha">
         <input type="date" id="fecha" aria-label="Fecha de corte">
         <button type="button" class="btn suave" id="btn-ultimo">Último dato</button>
+      </div>
+    </div>
+    <div class="ctl" id="ctl-mes" hidden><span>Mes</span>
+      <div class="fecha">
+        <select id="mes-sel" aria-label="Mes a ver"></select>
       </div>
     </div>
     <div class="ctl"><span>Pintar el mapa según</span>
@@ -571,6 +578,27 @@ function hayCons(y,m){
   const k1=y+'-'+pad(m);
   return PROVS.some(p=>{ const c=CONS[p]||{}; return c[k1]!=null; });
 }
+/* Meses con consolidado en los dos años (se pueden comparar), del más nuevo al más viejo */
+function mesesConsolidados(){
+  const out=[], a=ymd(T0).y, b=ymd(T1).y;
+  for(let y=b; y>=a; y--) for(let m=12; m>=1; m--) if(hayCons(y,m) && hayCons(y-1,m)) out.push({y,m});
+  return out;
+}
+const mayus = t => t.replace(/^./,c=>c.toUpperCase());
+function avisoConsolidado(){
+  const ms=mesesConsolidados(), t=ymd(T1);
+  let h='<div class="aviso info"><b>Resumen con datos consolidados.</b> El consolidado es el total oficial del mes que publica Hacienda una vez que el mes termina, con todas las transferencias ya revisadas. Por eso puede diferir un poco de la suma de los montos diarios.';
+  if(ms.length){
+    const u=ms[0];
+    if(u.y!==t.y || u.m!==t.m) h+='<br><br>El último dato consolidado es <b>'+MESES[u.m-1]+' de '+u.y+'</b>. '+mayus(MESES[t.m-1])+' de '+t.y+' va a estar disponible al cierre del mes. Para verlo día a día, usá la vista Diario o Anual.';
+  }
+  return h+'</div>';
+}
+function llenarMeses(){
+  const sel=$('#mes-sel'), ms=mesesConsolidados(), f=ymd(S.fecha);
+  sel.innerHTML=ms.map(x=>'<option value="'+x.y+'-'+pad(x.m)+'"'+(x.y===f.y&&x.m===f.m?' selected':'')+'>'+mayus(MESES[x.m-1])+' '+x.y+'</option>').join('');
+}
+
 function fechaMensual(C){
   const f=ymd(C);
   for(let y=f.y; y>=f.y-1; y--){
@@ -774,7 +802,7 @@ function graficoVariacion(cont,{cats,vals,etiq}){
 }
 
 /* ===================== ficha de la provincia ===================== */
-const NOMBRE_VISTA = {diario:'Día a día del mes', mensual:'Acumulado del mes', anual:'Acumulado del año'};
+const NOMBRE_VISTA = {diario:'Día a día del mes', mensual:'Mes completo · dato consolidado', anual:'Acumulado del año'};
 let ultimoR = null;
 function avisosDe(r){
   const av = [];
@@ -795,7 +823,7 @@ function pintarFicha(r,conservarIPC){
   } else {
     html += '<div class="aviso">No hay datos suficientes para comparar contra '+(f.y-1)+'. Se muestran solo los montos de '+f.y+'.</div>';
   }
-  if(S.vista==='mensual' && S._f!=null && S._f>S.fecha) html += '<div class="aviso">La vista mensual muestra solo meses cerrados (consolidado). El último disponible es '+MESES[f.m-1]+' de '+f.y+'. Para ver los días de '+MESES[ymd(S._f).m-1]+' usá la vista Diario o Anual.</div>';
+  if(S.vista==='mensual') html += avisoConsolidado();
   const unicos=avisosDe(r);
   if(unicos.length && r.hayComp) html += '<div class="aviso">'+unicos.map(esc).join('<br>')+'</div>';
 
@@ -944,6 +972,8 @@ function render(op){
   if(S.vista==='mensual'){ if(S._f==null) S._f=S.fecha; S.fecha=fechaMensual(S._f); }
   else if(S._f!=null){ S.fecha=S._f; S._f=null; }
   $('#fecha').min=toISO(T0); $('#fecha').max=toISO(T1); $('#fecha').value=toISO(S.fecha);
+  $('#ctl-fecha').hidden = S.vista==='mensual'; $('#ctl-mes').hidden = S.vista!=='mensual';
+  if(S.vista==='mensual') llenarMeses();
   document.querySelectorAll('#seg-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.vista)));
   document.querySelectorAll('#seg-color button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.c===S.color)));
   calcularTodas(); pintarMapa(); pintarRanking();
@@ -1183,6 +1213,7 @@ $('#seg-vista').addEventListener('click',e=>{ const b=e.target.closest('button')
 $('#seg-color').addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ S.color=b.dataset.c; render(); } });
 $('#fecha').addEventListener('change',e=>{ if(e.target.value){ S.fecha=parseISO(e.target.value); S._f=null; render(); } });
 $('#btn-ultimo').addEventListener('click',()=>{ S.fecha=T1; S._f=null; render(); });
+$('#mes-sel').addEventListener('change',e=>{ const [y,m]=e.target.value.split('-').map(Number); S._f=mk(y,m,diasMes(y,m)); render(); });
 $('#buscar').addEventListener('focus',abrirLista);
 $('#buscar').addEventListener('input',abrirLista);
 $('#buscar').addEventListener('keydown',e=>{
