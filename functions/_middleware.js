@@ -8,6 +8,7 @@ import {
 import {
   vistaAcceso, vistaRegistro, vistaSimple, vistaOlvide, vistaRestablecer, vistaAdmin,
 } from "../lib/vistas.js";
+import { listarIpc, guardarIpc, borrarIpc, ipcParaWeb, leerNumero } from "../lib/ipc.js";
 
 const RUTAS = {
   "/acceso": acceso,
@@ -41,7 +42,11 @@ export async function onRequest(ctx) {
     const nueva = new Response(resp.body, resp);
     nueva.headers.set("Cache-Control", "private, no-store");
     if (!tipo.includes("text/html")) return nueva;
-    return new HTMLRewriter().on("body", new BarraUsuario(usuario)).transform(nueva);
+    const ipc = JSON.stringify(ipcParaWeb(await listarIpc(env))).replace(/</g, "\\u003c");
+    return new HTMLRewriter()
+      .on("head", { element(el) { el.prepend(`<script>window.__IPC__=${ipc};</script>`, { html: true }); } })
+      .on("body", new BarraUsuario(usuario))
+      .transform(nueva);
   } catch (e) {
     console.log("Error:", e && e.stack || e);
     return vistaSimple("Algo salió mal", "Hubo un problema en el servidor. Probá de nuevo en unos minutos.",
@@ -54,7 +59,7 @@ class BarraUsuario {
   constructor(u) { this.u = u; }
   element(el) {
     const admin = this.u.admin ? `<a href="/admin" style="color:inherit">Panel</a> · ` : "";
-    el.append(`<div style="position:fixed;right:12px;bottom:12px;z-index:9999;font:13px system-ui,sans-serif;
+    el.append(`<div id="barra-usuario" style="position:fixed;right:12px;bottom:12px;z-index:9999;font:13px system-ui,sans-serif;
       background:rgba(20,12,38,.85);color:#efe9fb;padding:7px 12px;border-radius:20px;backdrop-filter:blur(6px)">
       ${escapar(this.u.nombre)} · ${admin}<a href="/salir" style="color:inherit">Salir</a></div>`, { html: true });
   }
@@ -184,9 +189,11 @@ async function admin({ request, env }, url) {
 
   if (request.method === "POST") {
     const f = await request.formData();
-    const dni = limpiarDni(f.get("dni")), accion = f.get("accion");
-    const u = await base.prepare("SELECT * FROM usuarios WHERE dni = ?").bind(dni).first();
-    if (!u || dni === yo.dni) {
+    const dni = limpiarDni(f.get("dni")), accion = String(f.get("accion") || "");
+    const u = accion.startsWith("ipc_") ? null : await base.prepare("SELECT * FROM usuarios WHERE dni = ?").bind(dni).first();
+    if (accion === "ipc_guardar" || accion === "ipc_borrar") {
+      msg = await accionIpc(env, f, accion);
+    } else if (!u || dni === yo.dni) {
       msg = { texto: "No se pudo hacer esa acción." };
     } else if (accion === "aprobar") {
       await base.prepare("UPDATE usuarios SET estado = 'aprobado', actualizado = ? WHERE dni = ?").bind(ahora(), dni).run();
@@ -215,5 +222,17 @@ async function admin({ request, env }, url) {
 
   const { results } = await base.prepare(
     "SELECT dni, nombre, apellido, email, estado, actualizado FROM usuarios ORDER BY actualizado DESC").all();
-  return vistaAdmin({ usuarios: results, adminDni: yo.dni, msg });
+  return vistaAdmin({ usuarios: results, adminDni: yo.dni, msg, ipc: await listarIpc(env), seccion: url.searchParams.get("s") });
+}
+
+async function accionIpc(env, f, accion) {
+  const mes = String(f.get("mes") || "");
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return { texto: "Elegí un mes válido." };
+  if (accion === "ipc_borrar") { await borrarIpc(env, mes); return { tipo: "ok", texto: `Se borró el IPC de ${mes}.` }; }
+  const mensual = leerNumero(f.get("mensual")), interanual = leerNumero(f.get("interanual"));
+  const fuente = f.get("fuente") === "INDEC" ? "INDEC" : "Estimado";
+  if (mensual == null || Number.isNaN(mensual) || mensual < -20 || mensual > 100) return { texto: "Revisá el IPC mensual (ej: 1,6)." };
+  if (Number.isNaN(interanual) || (interanual != null && (interanual < -50 || interanual > 1000))) return { texto: "Revisá el IPC interanual (ej: 32,4) o dejalo vacío." };
+  await guardarIpc(env, { mes, mensual, interanual: fuente === "INDEC" ? interanual : null, fuente });
+  return { tipo: "ok", texto: `Guardado el IPC de ${mes}: ${String(mensual).replace(".", ",")}% mensual (${fuente}). La web ya lo usa.` };
 }

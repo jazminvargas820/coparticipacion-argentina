@@ -390,6 +390,8 @@ b.textContent='Error en la página: '+(e.message||'desconocido')+(e.lineno?' (l�
 <script>
 var DATOS = /*__DATOS__*/null;
 var GEO = /*__GEO__*/null;
+/* IPC cargado desde el Panel de la web (lo agrega el servidor). Si no está, se usa el de datos.json */
+if(window.__IPC__ && DATOS){ Object.assign(DATOS, window.__IPC__); }
 
 (function(){
 'use strict';
@@ -466,6 +468,7 @@ function ipcEf(key){
 }
 /* IPC mensual que está implícito en los datos cargados (es el que se muestra de entrada en el simulador) */
 function ipcMensualImp(key){
+  if(IPC_M[key]!=null) return IPC_M[key];
   const b=IPC_BASE[key], pk=keyPrev(key), m12=IPC_M[keyAnt(key)];
   if(b==null || !(pk in IPC_BASE) || m12==null) return null;
   return ((1+b/100)/(1+IPC_BASE[pk]/100)*(1+m12/100)-1)*100;
@@ -511,15 +514,23 @@ function calcular(prov,C,vista){
   const esFinMes = f.d === diasMes(f.y,f.m);
 
   if(vista==='anual'){
-    let sc=0, sp=0, sa=0, ok=true;
+    let sc=0, sp=0, sa=0, ok=true, scR=0, saR=0, okR=true;
+    /* factor para llevar cada mes a pesos del mes del corte: producto de la inflación mensual de los meses siguientes */
+    const mensEf = k => (k in ipcMod) ? ipcMod[k] : ipcMensualImp(k);
+    const factor = mm => { let w=1; for(let k=mm+1;k<=f.m;k++){ const v=mensEf(f.y+'-'+pad(k)); if(v==null) return null; w*=1+v/100; } return w; };
     for(let mm=1; mm<=f.m; mm++){
       /* meses cerrados: consolidado (si no está cargado, suma de diarios); mes en curso: diarios hasta el corte */
       const p = (mm===f.m && !esFinMes) ? parMes(prov,f.y,mm,'parcial',f.d) : parMes(prov,f.y,mm,'completo');
       const ipc = ipcDe(f.y,mm);
       const act = actualizar(p.prev,ipc.v);
       r.meses.push({y:f.y,m:mm,cur:p.cur,prev:p.prev,ipc,act,fuente:p.fuente});
-      if(p.cur==null || p.prev==null || ipc.v==null) ok=false; else {sc+=p.cur; sp+=p.prev; sa+=act;}
+      if(p.cur==null || p.prev==null || ipc.v==null) ok=false; else {
+        sc+=p.cur; sp+=p.prev; sa+=act;
+        const w=factor(mm); if(w==null) okR=false; else { scR+=p.cur*w; saR+=act*w; }
+      }
     }
+    /* Variación real del acumulado en pesos constantes. "Actualizada" se expresa en la misma escala que lo cobrado en el año. */
+    if(ok && okR && scR>0){ sa = sc*saR/scR; r.pesosConstantes = true; }
     r.actual = ok ? sc : suma(prov,mk(f.y,1,1),C);
     r.hayComp = ok;
     if(ok){ r.anterior=sp; r.actualizada=sa; r.nominal=varPct(sc,sp); r.real=varPct(sc,sa); }
@@ -801,7 +812,7 @@ function pintarFicha(r,conservarIPC){
   } else if(S.vista==='anual'){
     html += desp('acum','Ver gráfico acumulado del año','<p class="nota" id="n-g1"></p><div class="chart" id="g1"></div>');
     const g = desp('varmes-g','Ver gráfico','<p class="nota" id="n-g2"></p><div class="chart" id="g2"></div><div class="acciones"><button type="button" class="btn suave" id="btn-img-var">Descargar gráfico</button></div>');
-    const t = r.meses.length ? desp('varmes-t','Ver tabla numérica','<p class="nota">Cada mes cerrado sale del consolidado; el mes en curso, de los diarios hasta la fecha elegida. Cada uno con su propio IPC interanual.</p><div class="tabla-scroll"><table id="t-meses"></table></div><div class="acciones"><button type="button" class="btn suave" id="btn-img-tabla">Descargar tabla</button></div>') : '';
+    const t = r.meses.length ? desp('varmes-t','Ver tabla numérica','<p class="nota">Cada mes cerrado sale del consolidado; el mes en curso, de los diarios hasta la fecha elegida. Cada uno con su propio IPC interanual. El total del año se compara en pesos constantes del último mes.</p><div class="tabla-scroll"><table id="t-meses"></table></div><div class="acciones"><button type="button" class="btn suave" id="btn-img-tabla">Descargar tabla</button></div>') : '';
     html += desp('varmes','Variación real mes a mes',g+t);
   }
   html += '<div class="bloque" id="bloque-ipc"></div>';
@@ -1132,7 +1143,7 @@ function dibujarTablaMeses(g,Wd,r){
     r.meses.map(x=>{ const nom=varPct(x.cur,x.prev), real=varPct(x.cur,x.act);
       return {celdas:[{t:MESES[x.m-1].replace(/^./,c=>c.toUpperCase())},{t:fmt(x.prev)},{t:fmt(x.cur)},{t:x.ipc.v==null?'–':fmt(x.ipc.v)+'%'+(x.ipc.mod?' (sim.)':(x.ipc.estimado?' (est.)':''))},{t:fmt(x.act)},{t:fmtPct(nom),c:colorN(nom)},{t:fmtPct(real),c:colorN(real)}]}; }),{rh:34,fs:15});
   y+=20; g.textAlign='left'; g.font='400 14px '+sans; g.fillStyle=PC.suave;
-  envolver(g,'Cada mes cerrado sale del consolidado; el mes en curso, de los diarios hasta el '+fmtFecha(S.fecha)+'. Cada uno con su propio IPC interanual.',w).forEach(l=>{ g.fillText(l,X,y); y+=19; });
+  envolver(g,'Cada mes cerrado sale del consolidado; el mes en curso, de los diarios hasta el '+fmtFecha(S.fecha)+'. Cada uno con su propio IPC interanual. El total del año se compara en pesos constantes del último mes.',w).forEach(l=>{ g.fillText(l,X,y); y+=19; });
   y+=18; return pieImagen(g,X,y,w);
 }
 function imgVar(){ if(ultimoR) generarPNG((g,Wd)=>dibujarVarMeses(g,Wd,ultimoR),1000,'variacion_real_mes_a_mes_'+slug(visible(S.prov))+'_'+toISO(S.fecha)+'.png'); }
@@ -1154,6 +1165,7 @@ function exportar(){
   const info=resumenFiltros(), ahora=new Date();
   const bvc=clon.querySelector('#bienvenida'); if(bvc) bvc.remove();
   const bay=clon.querySelector('#btn-ayuda'); if(bay) bay.remove();
+  const bu=clon.querySelector('#barra-usuario'); if(bu) bu.remove();
   clon.querySelector('body').style.overflow='';
   const b=clon.querySelector('#banner-export'); b.removeAttribute('hidden');
   b.innerHTML='<strong>Versión exportada el '+pad(ahora.getDate())+'/'+pad(ahora.getMonth()+1)+'/'+ahora.getFullYear()+'.</strong> Filtros aplicados al exportar: '+esc(info.texto)+'.';
