@@ -9,6 +9,7 @@ import {
   vistaAcceso, vistaRegistro, vistaSimple, vistaOlvide, vistaRestablecer, vistaAdmin,
 } from "../lib/vistas.js";
 import { listarIpc, guardarIpc, borrarIpc, ipcParaWeb, leerNumero } from "../lib/ipc.js";
+import { registrar, resumenActividad, ultimosEventos, borrarActividad } from "../lib/actividad.js";
 
 const RUTAS = {
   "/acceso": acceso,
@@ -17,6 +18,7 @@ const RUTAS = {
   "/restablecer": restablecer,
   "/salir": salir,
   "/admin": admin,
+  "/evento": evento,
 };
 
 export async function onRequest(ctx) {
@@ -42,9 +44,10 @@ export async function onRequest(ctx) {
     const nueva = new Response(resp.body, resp);
     nueva.headers.set("Cache-Control", "private, no-store");
     if (!tipo.includes("text/html")) return nueva;
+    if (request.method === "GET" && (ruta === "/" || ruta === "/index.html")) ctx.waitUntil(registrar(env, usuario, "visita", null, request));
     const ipc = JSON.stringify(ipcParaWeb(await listarIpc(env))).replace(/</g, "\\u003c");
     return new HTMLRewriter()
-      .on("head", { element(el) { el.prepend(`<script>window.__IPC__=${ipc};</script>`, { html: true }); } })
+      .on("head", { element(el) { el.prepend(`<script>window.__IPC__=${ipc};window.__TRACK__=true;</script>`, { html: true }); } })
       .on("body", new BarraUsuario(usuario))
       .transform(nueva);
   } catch (e) {
@@ -68,7 +71,8 @@ class BarraUsuario {
 const volverSeguro = (v) => (typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : "/");
 
 // ---------------------------------------------------------------- /acceso
-async function acceso({ request, env }, url) {
+async function acceso(ctx, url) {
+  const { request, env } = ctx;
   if (request.method !== "POST") {
     if (await usuarioDeSesion(request, env)) return redirigir(volverSeguro(url.searchParams.get("volver")));
     return vistaAcceso({ volver: volverSeguro(url.searchParams.get("volver")) });
@@ -79,6 +83,7 @@ async function acceso({ request, env }, url) {
   if (!dniValido(dni)) return vistaAcceso({ msg: { texto: "Revisá el DNI (7 u 8 números, sin puntos)." }, dni, volver });
   const r = await intentarLogin(env, dni, String(f.get("clave") || ""));
   if (!r.ok) return vistaAcceso({ msg: { texto: r.error }, dni, volver });
+  ctx.waitUntil(registrar(env, { dni, admin: esAdmin(env, dni) }, "ingreso", null, request));
   return redirigir(esAdmin(env, dni) && volver === "/" ? "/admin" : volver, await crearSesion(env, dni));
 }
 
@@ -216,13 +221,35 @@ async function admin({ request, env }, url) {
         base.prepare("DELETE FROM sesiones WHERE dni = ?").bind(dni),
         base.prepare("DELETE FROM resets WHERE dni = ?").bind(dni),
       ]);
+      await borrarActividad(env, dni);
       msg = { tipo: "ok", texto: `Se borraron los datos de ${u.nombre} ${u.apellido}.` };
     }
   }
 
   const { results } = await base.prepare(
     "SELECT dni, nombre, apellido, email, estado, actualizado FROM usuarios ORDER BY actualizado DESC").all();
-  return vistaAdmin({ usuarios: results, adminDni: yo.dni, msg, ipc: await listarIpc(env), seccion: url.searchParams.get("s") });
+  const filtro = limpiarDni(url.searchParams.get("u")) || null;
+  return vistaAdmin({
+    usuarios: results, adminDni: yo.dni, msg, ipc: await listarIpc(env),
+    actividad: await resumenActividad(env),
+    eventos: await ultimosEventos(env, { dni: filtro, limite: filtro ? 200 : 60 }),
+    filtro,
+  });
+}
+
+// ---------------------------------------------------------------- /evento (lo manda la web: consultas y descargas)
+async function evento(ctx) {
+  const { request, env } = ctx;
+  if (request.method !== "POST") return new Response(null, { status: 405 });
+  const usuario = await usuarioDeSesion(request, env);
+  if (!usuario) return new Response(null, { status: 401 });
+  let d = {};
+  try { d = await request.json(); } catch (e) { return new Response(null, { status: 400 }); }
+  if (!["consulta", "descarga"].includes(d.tipo)) return new Response(null, { status: 400 });
+  const limpio = {};
+  for (const k of ["prov", "vista", "fecha", "imagen"]) if (d[k] != null) limpio[k] = String(d[k]).slice(0, 60);
+  await registrar(env, usuario, d.tipo, JSON.stringify(limpio), request);
+  return new Response(null, { status: 204 });
 }
 
 async function accionIpc(env, f, accion) {

@@ -1010,6 +1010,22 @@ function pintarIPC(r){
 }
 
 /* ===================== render general ===================== */
+/* ===================== registro de uso (solo en la web con usuarios) ===================== */
+function avisarServidor(datos){
+  if(!window.__TRACK__) return;
+  try{ fetch('/evento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(datos),keepalive:true,credentials:'same-origin'}); }catch(e){}
+}
+let ultimaConsulta='', timerConsulta=null;
+function anotarConsulta(){
+  if(!window.__TRACK__ || !S.vista || !S.prov) return;
+  clearTimeout(timerConsulta);
+  timerConsulta=setTimeout(()=>{
+    const d={tipo:'consulta',prov:visible(S.prov),vista:S.vista,fecha:toISO(S.fecha)}, k=d.prov+'|'+d.vista+'|'+d.fecha;
+    if(k!==ultimaConsulta){ ultimaConsulta=k; avisarServidor(d); }
+  },2500);
+}
+const NOMBRE_IMG=[['copa_','Ficha de la provincia'],['tabla_mes_a_mes','Tabla mes a mes'],['montos_diarios','Montos de cada día'],['variacion_real','Gráfico variación mes a mes'],['cuadro_jurisdicciones','Cuadro de todas las provincias']];
+
 function render(op){
   op = op||{};
   S.fecha = Math.min(T1,Math.max(T0,S.fecha));
@@ -1040,7 +1056,7 @@ function render(op){
     pintarCuadro();
   }
   document.querySelectorAll('.ficha-tabla').forEach(t=>{ const hs=[...t.querySelectorAll('thead th')].map(h=>h.textContent); t.querySelectorAll('tbody tr').forEach(tr=>[...tr.children].forEach((td,i)=>td.setAttribute('data-label',hs[i]||''))); });
-  guardarHash();
+  guardarHash(); anotarConsulta();
 }
 function elegir(p){ S.prov=p; $('#buscar').value=''; $('#ranking').hidden=true; render(); const f=$('#ficha'); if(S.vista && window.innerWidth<=900) f.scrollIntoView({behavior:'smooth',block:'start'}); }
 
@@ -1171,6 +1187,8 @@ function dibujarCuadro(g,Wd,d){
   y+=16; return pieImagen(g,X,y,w);
 }
 async function generarPNG(dibujar,Wd,nombre){
+  const tipoImg=(NOMBRE_IMG.find(x=>nombre.startsWith(x[0]))||[0,'Imagen'])[1];
+  avisarServidor({tipo:'descarga',imagen:tipoImg,prov:S.prov?visible(S.prov):'Todas',vista:S.vista,fecha:toISO(S.fecha)});
   try{ if(document.fonts&&document.fonts.ready) await document.fonts.ready; }catch(e){}
   await cargarImgs();
   const k=2, medir=document.createElement('canvas'); medir.width=Wd; medir.height=4000;
