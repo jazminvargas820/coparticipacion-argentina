@@ -594,7 +594,16 @@ function avisoConsolidado(){
   }
   return h+'</div>';
 }
-/* Vista diaria: aclara que son montos sin consolidar */
+/* ¿La fecha es el último día del mes con transferencias (o el último del calendario)? */
+function esCierreMes(C){
+  const f=ymd(C), fin=diasMes(f.y,f.m);
+  if(f.d===fin) return true;
+  const arr=SERIE.TOTAL || SERIE[PROVS[0]], i0=idx(mk(f.y,f.m,f.d+1)), i1=idx(mk(f.y,f.m,fin));
+  if(!arr || i1>=arr.length) return false;            // el mes todavía no terminó
+  for(let i=i0;i<=i1;i++) if(arr[i]) return false;
+  return true;
+}
+/* Vista diaria al cierre del mes: aclara que son montos sin consolidar */
 function avisoDiario(){
   const f=ymd(S.fecha);
   let h='<div class="aviso info"><b>Montos diarios, sin consolidar.</b> Son las transferencias día por día tal como las informa Hacienda.';
@@ -836,7 +845,7 @@ function pintarFicha(r,conservarIPC){
     html += '<div class="aviso">No hay datos suficientes para comparar contra '+(f.y-1)+'. Se muestran solo los montos de '+f.y+'.</div>';
   }
   if(S.vista==='mensual') html += avisoConsolidado();
-  if(S.vista==='diario') html += avisoDiario();
+  if(S.vista==='diario' && esCierreMes(S.fecha)) html += avisoDiario();
   const unicos=avisosDe(r);
   if(unicos.length && r.hayComp) html += '<div class="aviso">'+unicos.map(esc).join('<br>')+'</div>';
 
@@ -1108,7 +1117,7 @@ function dibujarFicha(g,Wd,r){
         return {celdas:[{t:MESES[x.m-1].replace(/^./,c=>c.toUpperCase())},{t:fmt(x.prev)},{t:fmt(x.cur)},{t:x.ipc.v==null?'–':fmt(x.ipc.v)+'%'+(x.ipc.mod?' (sim.)':(x.ipc.estimado?' (est.)':''))},{t:fmt(x.act)},{t:fmtPct(nom),c:colorN(nom)},{t:fmtPct(real),c:colorN(real)}]}; }),{rh:34,fs:15});
   }
   const notas=avisosDe(r);
-  if(S.vista==='diario') notas.unshift('Montos diarios, sin consolidar: el total oficial del mes (consolidado) puede diferir un poco.');
+  if(S.vista==='diario' && esCierreMes(S.fecha)) notas.unshift('Montos diarios, sin consolidar: el total oficial del mes (consolidado) puede diferir un poco.');
   if(notas.length){ y+=22; g.textAlign='left'; g.font='400 14px '+sans; g.fillStyle=PC.suave; notas.forEach(n=>envolver(g,n,w).forEach(l=>{ g.fillText(l,X,y); y+=19; })); }
   y+=24; return pieImagen(g,X,y,w);
 }
