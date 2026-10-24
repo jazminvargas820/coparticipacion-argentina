@@ -1,0 +1,57 @@
+# Robot de actualización diaria de la web de coparticipación.
+# Descarga los Excel de Hacienda, regenera index.html y lo guarda en el repo.
+# Cloudflare Pages publica solo cada vez que este robot guarda cambios.
+
+name: Actualizar datos
+
+on:
+  schedule:
+    # Hacienda publica los días hábiles después de las 14 h.
+    # Lunes a viernes a las 15:17, 17:17, 19:17 y 22:17 (hora Argentina).
+    # GitHub usa hora UTC (Argentina + 3 h); por eso las 22:17 caen "al día siguiente" en UTC.
+    - cron: "17 18,20,22 * * 1-5"
+    - cron: "17 1 * * 2-6"
+  workflow_dispatch:        # botón "Run workflow" para correrlo a mano
+  push:                     # si editás el IPC, la plantilla o los scripts, regenera la web
+    paths:
+      - "base_coparticipacion/data/ipc.csv"
+      - "base_coparticipacion/plantilla_neon.html"
+      - "base_coparticipacion/*.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: actualizar-datos
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar librerías
+        run: pip install pandas xlrd openpyxl pillow requests
+
+      - name: Descargar Excel y regenerar la web
+        run: python base_coparticipacion/actualizar.py
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "robot-coparticipacion"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A base_coparticipacion
+          if git diff --cached --quiet; then
+            echo "Sin cambios: nada para publicar."
+          else
+            git commit -m "Actualización automática $(TZ=America/Argentina/Buenos_Aires date '+%d/%m/%Y %H:%M')"
+            git pull --rebase
+            git push
+          fi
