@@ -1139,6 +1139,29 @@ function dibujarBandera(g,p,x,yc,h){
   g.drawImage(im,x,yc-h/2,w,h); g.strokeStyle=PC.linea; g.lineWidth=1; g.strokeRect(x+.5,yc-h/2+.5,w-1,h-1); return w;
 }
 function colorN(v){ return v==null?PC.tinta:(v<0?PC.rojo:PC.verde); }
+/* Titular y resumen en lenguaje llano para la imagen */
+function textoTitular(r){
+  const f=ymd(S.fecha), fa=ymd(r.fechaAnt), quien = S.prov==='TOTAL' ? 'Las 24 jurisdicciones' : visible(S.prov);
+  const verbo = S.prov==='TOTAL' ? 'recibieron' : 'recibió', le = S.prov==='TOTAL' ? 'les' : 'le';
+  const esReal=S.color==='real', v=esReal?r.real:r.nominal, pct=fmt(Math.abs(v)).replace(/,0$/,'')+'%';
+  const cuanto = Math.abs(v)<0.05 ? 'lo mismo' : pct+(v>0?' más':' menos');
+  const mes=MESES[f.m-1];
+  let cuando, contra;
+  if(S.vista==='mensual'){ cuando='en '+mes+' de '+f.y; contra='del mismo mes de '+fa.y; }
+  else if(S.vista==='anual'){ cuando='entre el 1 de enero y el '+fmtFecha(S.fecha); contra='del mismo período de '+fa.y; }
+  else { cuando='entre el 1 y el '+f.d+' de '+mes; contra='del mismo período de '+fa.y; }
+  const comp = S.vista==='mensual' ? 'que hace un año' : 'que en el mismo período de '+fa.y;
+  const titulo = quien+' '+verbo+' '+cuanto+' '+comp+(esReal?', descontada la inflación':', sin descontar la inflación');
+  const monto = x => '$'+NF0.format(Math.round(x))+' millones';
+  let resumen = 'Nación '+le+' transfirió '+monto(r.actual)+' '+cuando+', contra '+monto(r.anterior)+' '+contra+'.';
+  const sube = v>0 ? 'la suba' : 'la caída';
+  if(esReal){
+    resumen += S.vista==='anual'
+      ? ' Descontada la inflación de cada mes, '+(Math.abs(v)<0.05?'quedó sin cambios.':sube+' real fue de '+pct+'.')
+      : ' Con una inflación interanual de '+fmt(r.ipcs[0].v)+'%, '+(Math.abs(v)<0.05?'quedó sin cambios en términos reales.':sube+' real fue de '+pct+'.');
+  }
+  return {titulo, resumen};
+}
 function dibujarFicha(g,Wd,r){
   const sans=fSans(), serif=fSerif(), X=40, w=Wd-80, f=ymd(S.fecha), fa=ymd(r.fechaAnt);
   const gr=g.createLinearGradient(0,0,Wd,0); gr.addColorStop(0,'#4b1d9a'); gr.addColorStop(.5,'#6d2fd6'); gr.addColorStop(1,'#a77bff');
@@ -1146,12 +1169,20 @@ function dibujarFicha(g,Wd,r){
   g.textAlign='left'; const fw=dibujarBandera(g,S.prov,X,54,34); g.fillStyle=PC.tinta; g.font='700 40px '+serif; g.fillText(visible(S.prov),X+(fw?fw+16:0),68);
   g.fillStyle=PC.suave; g.font='400 18px '+sans; g.fillText(NOMBRE_VISTA[S.vista]+' · '+periodoCorto(),X,98);
   let y=118;
-  if(r.hayComp){
+  if(r.hayComp && S.vista!=='mensual'){
     const esReal=S.color==='real', v=esReal?r.real:r.nominal;
     g.font='700 84px '+serif; g.fillStyle=colorN(v); const t=fmtPct(v); g.fillText(t,X,y+78);
     const bx=X+g.measureText(t).width+24; g.font='400 17px '+sans; g.fillStyle=PC.suave;
     envolver(g,esReal?'variación real contra el mismo período de '+fa.y+', descontada la inflación.':'variación nominal contra el mismo período de '+fa.y+', sin descontar la inflación.',Wd-X-bx).forEach((l,k)=>g.fillText(l,bx,y+50+k*22));
     y+=110;
+  } else if(r.hayComp){
+    /* Mes consolidado: titular y resumen, estilo editorial */
+    const tx=textoTitular(r);
+    y+=18; g.fillStyle=PC.tinta; g.font='700 36px '+serif;
+    envolver(g,tx.titulo,w).forEach(l=>{ y+=42; g.fillText(l,X,y); });
+    y+=14; g.font='400 18px '+sans; g.fillStyle=PC.suave;
+    envolver(g,tx.resumen,w).forEach(l=>{ y+=27; g.fillText(l,X,y); });
+    y+=28;
   }
   const ipcT = S.vista==='anual' ? 'Mes a mes' : (r.ipcs[0].v==null?'–':fmt(r.ipcs[0].v)+'%'+(r.ipcs[0].mod?' (simulado)':(r.ipcs[0].estimado?' (estimado)':'')));
   const cols=[{f:.22,al:'l'},{f:.14,al:'r'},{f:.14,al:'r'},{f:.15,al:'r'},{f:.15,al:'r'},{f:.10,al:'r'},{f:.10,al:'r'}];
