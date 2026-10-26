@@ -6,11 +6,11 @@ name: Actualizar datos
 
 on:
   schedule:
-    # Hacienda publica los días hábiles después de las 14 h.
-    # Lunes a viernes a las 15:17, 17:17, 19:17 y 22:17 (hora Argentina).
-    # GitHub usa hora UTC (Argentina + 3 h); por eso las 22:17 caen "al día siguiente" en UTC.
-    - cron: "17 18,20,22 * * 1-5"
-    - cron: "17 1 * * 2-6"
+    # Hacienda publica los días hábiles después de las 14 h. Horarios en hora Argentina (GitHub usa UTC = Argentina + 3 h):
+    # de 15:02 a 16:42 cada 20 minutos, 17:02, 19:02 y 22:02 (lunes a viernes).
+    - cron: "2,22,42 18-19 * * 1-5"
+    - cron: "2 20,22 * * 1-5"
+    - cron: "2 1 * * 2-6"
   workflow_dispatch:        # botón "Run workflow" para correrlo a mano
   push:                     # si editás el IPC, la plantilla o los scripts, regenera la web
     paths:
