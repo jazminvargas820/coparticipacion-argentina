@@ -1395,19 +1395,46 @@ const fechaLarga = C => { const f=ymd(C); return f.d+' de '+MESES[f.m-1]+' '+f.y
 const pillFecha = () => { const f=ymd(S.fecha); return S.vista==='mensual' ? MAY(MESES[f.m-1]+' '+f.y) : MAY(f.d+' de '+MESES[f.m-1]+' '+f.y); };
 
 /* 1 · Ficha de la provincia (mensual, diario o anual) */
+/* Caja de dos columnas: rótulo, valor grande y unidad opcional */
+function kPar(g,y,h,l1,v1,l2,v2,uni){
+  const x=K.X, w=K.W-2*K.X; kCaja(g,y,h); g.fillStyle='rgba(243,238,255,.45)'; g.fillRect(x+w/2-1,y,2,h);
+  [[l1,v1],[l2,v2]].forEach(([l,v],i)=>{
+    const cx=x+w/4+i*w/2;
+    g.font=kf(600,24); g.fillStyle=K.mu; kEspaciado(g,l,cx,y+(uni?58:56),2);
+    let s=62; g.font=kf(800,s); while(g.measureText(v).width>w/2-50 && s>36){ s-=2; g.font=kf(800,s); }
+    g.fillStyle=K.fg; g.textAlign='center'; g.fillText(v,cx,y+(uni?126:128));
+    if(uni){ g.font=kf(400,22); g.fillStyle=K.lila; g.fillText(uni,cx,y+164); }
+  });
+  return y+h;
+}
 function dibujarFicha04(g,r){
   const f=ymd(S.fecha), fa=ymd(r.fechaAnt), esReal=S.color==='real', v=esReal?r.real:r.nominal;
   let y=kCabecera(g,pillFecha(),S.prov);
   const ipc=r.ipcs[0]||{}, ipcTxt=ipc.v==null?'–':fmt(ipc.v)+'%';
   const ipcLab='IPC interanual'+(ipc.mod?' (simulado)':(ipc.estimado?' (estimado)':''));
   if(S.vista==='mensual'){
-    y=kRotulo(g,'Mes completo · dato consolidado',y+68);
-    if(r.hayComp){ const tx=textoTitular(r); y=kTitular(g,tx.titulo,y+8,58); y=kParrafo(g,tx.resumen,y+6,27); }
-    else y=kTitular(g,nombreLargo(S.prov).replace(/^las/,'Las')+' · '+MESES[f.m-1]+' '+f.y,y+8,52);
-    y=kDatos(g,y+32,[[etiqCopa(r.fechaAnt),kM(r.anterior)],[etiqCopa(S.fecha),kM(r.actual)],[ipcLab,ipcTxt],
-      ['Copa '+fa.y+' actualizada',kM(r.hayComp?r.actualizada:null)],['Variación nominal',kPct(r.hayComp?r.nominal:null),kCol(r.nominal)],['Variación real',kPct(r.hayComp?r.real:null),kCol(r.real)]]);
-    y=kNota(g,'Montos en millones de pesos corrientes (M).'+(ipc.estimado||ipc.mod?' '+avisosDe(r).join(' '):''),y+8);
-    return y;
+    /* Formato "saldo": 2025 vs 2026, variación e inflación, y el saldo (variación real) */
+    y=kRotulo(g,'Mes completo · dato consolidado',y+66);
+    y=kTitular(g,'Dinero enviado por el gobierno Nacional a '+nombreLargo(S.prov),y+4,54);
+    y=kPar(g,y+34,200,String(fa.y),r.anterior==null?'–':'$'+fmt(r.anterior),String(f.y),r.actual==null?'–':'$'+fmt(r.actual),'millones');
+    const infl=ipc.v==null?'–':fmt(ipc.v)+'%'+(ipc.estimado?'*':'');
+    y=kPar(g,y+22,168,'VARIACIÓN',kPct(r.hayComp?r.nominal:null),'INFLACIÓN',infl,null);
+    const sr=r.hayComp?r.real:null;
+    if(sr!=null && sr>=0.05){        /* el saldo solo se muestra cuando es positivo */
+      const top=y+22, h=164, x=K.X, w=K.W-2*K.X;
+      kRect(g,x,top,w,h,30); g.lineWidth=12; g.strokeStyle='rgba(91,227,154,.14)'; g.stroke(); g.lineWidth=3; g.strokeStyle=K.ok; g.stroke();
+      const t1='Saldo positivo ', t2=kPct(sr);
+      g.font=kf(700,34); const w1=g.measureText(t1).width; g.font=kf(800,72); const w2=g.measureText(t2).width;
+      let xx=K.W/2-(w1+w2)/2; g.textAlign='left';
+      g.font=kf(700,34); g.fillStyle=K.fg; g.fillText(t1,xx,top+h/2+12);
+      g.font=kf(800,72); g.fillStyle=K.ok; g.fillText(t2,xx+w1,top+h/2+26);
+      y=top+h;
+    }
+    const notas=['Montos en millones de pesos corrientes. Dato consolidado de '+MESES[f.m-1]+'.'];
+    if(sr!=null && sr>=0.05) notas.push('El saldo es la variación descontada la inflación.');
+    if(ipc.estimado) notas.push('* IPC de '+MESES[f.m-1]+' estimado.');
+    if(ipc.mod) notas.push('IPC simulado por quien descargó la imagen.');
+    return kNota(g,notas.join(' '),y+16);
   }
   const quien=S.prov==='TOTAL'?'Total país':visible(S.prov);
   if(S.vista==='anual'){
